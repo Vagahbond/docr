@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/russross/blackfriday/v2"
@@ -48,94 +49,13 @@ func GeneratePageHTML(markdownPath string) (template.HTML, error) {
 
 // GenerateIndexHTML generates the HTML for the index page
 func GenerateIndexHTML(pages []string) (string, error) {
-	tmpl, err := template.New("index").Parse(`
-		<!DOCTYPE html>
-		<html>
-		<head>
-			<meta charset="UTF-8">
-			<title>My Website</title>
-			<style>
-				html, body {
-					height: 100%;
-					margin: 0;
-					padding: 0;
-				}
-				body {
-					display: flex;
-					flex-direction: column;
-				}
-				.container {
-					flex: 1;
-				}
-				.navbar {
-					background-color: lightgray;
-					padding: 10px;
-				}
-				.navbar a {
-					margin-right: 10px;
-					text-decoration: none;
-				}
-				.main {
-					padding: 20px;
-				}
-				.page-list {
-					list-style-type: none;
-				}
-				.page-list li {
-					margin-bottom: 10px;
-				}
-				.footer {
-					padding: 20px;
-					text-align: center;
-					background-color: lightgray;
-				}
-				.dark-mode-button {
-					position: absolute;
-					top: 10px;
-					right: 10px;
-				}
-				.dark-mode {
-					background-color: #000;
-					color: #fff;
-				}
-			</style>
-			<script>
-				function toggleDarkMode() {
-					var body = document.querySelector('body');
-					body.classList.toggle('dark-mode');
-				}
-			</script>
-		</head>
-		<body>
-			<div class="navbar">
-				<a href="{{.Navbar.Home}}">Home</a>
-				<a href="{{.Navbar.GitHub}}">GitHub</a>
-				<a href="{{.Navbar.Email}}">Email</a>
-				<button class="dark-mode-button" onclick="toggleDarkMode()">Dark Mode</button>
-			</div>
-			<div class="container">
-				<div class="main">
-					<h1>Welcome to My Website</h1>
-					<ul class="page-list">
-						{{range .Pages}}
-							<li><a href="{{.}}">{{.}}</a></li>
-						{{end}}
-					</ul>
-				</div>
-			</div>
-			<div class="footer">
-				<p>{{.Footer.Text}}</p>
-			</div>
-		</body>
-		</html>
-	`)
-
+	indexTmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		return "", err
 	}
 
 	builder := strings.Builder{}
-	err = tmpl.Execute(&builder, struct {
+	err = indexTmpl.Execute(&builder, struct {
 		Navbar Navbar
 		Pages  []string
 		Footer Footer
@@ -178,96 +98,21 @@ func main() {
 			continue
 		}
 
-		markdownPath := fmt.Sprintf("%s/%s", markdownDir, file.Name())
-		pagePath := fmt.Sprintf("%s/%s.html", outputDir, strings.TrimSuffix(file.Name(), ".md"))
+		markdownPath := filepath.Join(markdownDir, file.Name())
+		pagePath := filepath.Join(outputDir, strings.TrimSuffix(file.Name(), ".md")+".html")
 
 		html, err := GeneratePageHTML(markdownPath)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		tmpl, err := template.New("page").Parse(`
-			<!DOCTYPE html>
-			<html>
-			<head>
-				<meta charset="UTF-8">
-				<title>{{.Title}}</title>
-					<style>
-					html, body {
-						height: 100%;
-						margin: 0;
-						padding: 0;
-					}
-					body {
-						display: flex;
-						flex-direction: column;
-					}
-					.container {
-						flex: 1;
-					}
-					.navbar {
-						background-color: lightgray;
-						padding: 10px;
-					}
-					.navbar a {
-						margin-right: 10px;
-						text-decoration: none;
-					}
-					.main {
-						padding: 20px;
-					}
-					.page-content {
-						margin-top: 20px;
-					}
-					.footer {
-						padding: 20px;
-						text-align: center;
-						background-color: lightgray;
-					}
-					.dark-mode-button {
-						position: absolute;
-						top: 10px;
-						right: 10px;
-					}
-					.dark-mode {
-						background-color: #000;
-						color: #fff;
-					}
-				</style>
-				<script>
-					function toggleDarkMode() {
-						var body = document.querySelector('body');
-						body.classList.toggle('dark-mode');
-					}
-				</script>
-			</head>
-			<body>
-				<div class="navbar">
-					<a href="../index.html">Home</a>
-					<a href="#{{.Title}}">{{.Title}}</a>
-					<a href="../index.html#footer">Footer</a>
-					<button class="dark-mode-button" onclick="toggleDarkMode()">Dark Mode</button>
-				</div>
-				<div class="container">
-					<div class="main">
-						<div class="page-content">
-							{{.Body}}
-						</div>
-					</div>
-				</div>
-				<div class="footer" id="footer">
-					<p>© 2023 My Website. All rights reserved.</p>
-				</div>
-			</body>
-			</html>
-		`)
-
+		pageTmpl, err := template.ParseFiles("templates/page.html")
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		fileContent := strings.Builder{}
-		err = tmpl.Execute(&fileContent, Page{
+		err = pageTmpl.Execute(&fileContent, Page{
 			Title: strings.TrimSuffix(file.Name(), ".md"),
 			Body:  html,
 		})
@@ -289,7 +134,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	indexPath := fmt.Sprintf("%s/index.html", outputDir)
+	indexPath := filepath.Join(outputDir, "index.html")
 	err = ioutil.WriteFile(indexPath, []byte(indexHTML), 0644)
 	if err != nil {
 		log.Fatal(err)

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>My Website</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="scripts.js"></script>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="{{.Navbar.Home}}">Home</a>
+      <a href="{{.Navbar.GitHub}}">GitHub</a>
+      <a href="{{.Navbar.Email}}">Email</a>
+      <button class="dark-mode-button" onclick="{{.Navbar.DarkModeJS}}">
+        Dark Mode
+      </button>
+    </div>
+    <div class="container">
+      <div class="main">
+        <p>
+          This is where I store my notes on processes I find particularly
+          difficult, interesting and obscure. If those notes helped you in any
+          way, that is great. If you are a Nix expert how somehow found their
+          way in here, I only ask that you point out my mistakes where you spot
+          them. I am not a Nix expert, and my notes are limited to my own
+          knowledge. If you spot a mistake, please let me know and I would be
+          happy to learn from you. Thanks!
+        </p>
+        <h1>Notes</h1>
+        <ul class="page-list">
+          {{range .Pages}}
+          <li><a href="{{.}}">{{.}}</a></li>
+          {{end}}
+        </ul>
+      </div>
+    </div>
+    <div class="footer">
+      <p>{{.Footer.Text}}</p>
+    </div>
+  </body>
+</html>

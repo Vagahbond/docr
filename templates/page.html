@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="../styles.css" />
+    <script src="../scripts.js"></script>
+  </head>
+  <body>
+    <div class="navbar">
+      <a href="../index.html">Home</a>
+      <a href="#{{.Title}}">{{.Title}}</a>
+      <a href="../index.html#footer">Footer</a>
+      <button class="dark-mode-button" onclick="toggleDarkMode()">
+        Dark Mode
+      </button>
+    </div>
+    <div class="container">
+      <div class="main">
+        <div class="page-content">{{.Body}}</div>
+      </div>
+    </div>
+    <div class="footer" id="footer">
+      <p>© 2023 My Website. All rights reserved.</p>
+    </div>
+  </body>
+</html>

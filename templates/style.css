@@ -1,109 +1,50 @@
-/* Reset CSS */
-html,
-body,
-div,
-span,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p,
-a,
-ul,
-ol,
-li {
+body {
+  background-color: #333333;
+  color: #ffffff;
   margin: 0;
   padding: 0;
-  border: 0;
-  font-size: 100%;
-  font: inherit;
-  vertical-align: baseline;
-}
-
-/* Global Styles */
-html,
-body {
-  height: 100%;
-}
-
-body {
-  display: flex;
-  flex-direction: column;
-  font-family: Arial, sans-serif;
-  background-color: #1c1c1c;
-  color: #fff;
-}
-
-.container {
-  flex: 1;
 }
 
 .navbar {
-  background-color: #222;
-  padding: 10px;
+  background-color: #222222;
+  padding: 20px;
 }
 
 .navbar a {
-  margin-right: 10px;
+  color: #ffffff;
   text-decoration: none;
-  color: #fff;
+  margin-right: 10px;
 }
 
-.main {
-  padding: 20px;
+.home-button {
+  font-weight: bold;
 }
 
-.page-list {
-  list-style-type: none;
+.content {
+  text-align: center;
+  margin: 50px auto;
+  max-width: 600px;
 }
 
-.page-list li {
-  margin-bottom: 10px;
+.button-container {
+  margin-top: 30px;
+}
+
+.button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #222222;
+  color: #ffffff;
+  text-decoration: none;
+  margin-right: 10px;
+  border-radius: 5px;
 }
 
 .footer {
-  padding: 20px;
+  background-color: #222222;
+  padding: 10px;
   text-align: center;
-  background-color: #222;
-}
-
-.dark-mode-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background-color: #222;
-  color: #fff;
-  border: none;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-
-.dark-mode {
-  background-color: #000;
-  color: #fff;
-}
-
-/* Specific Styles */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  margin-bottom: 10px;
-  color: #fff;
-}
-
-a {
-  color: #4ca7ff;
-}
-
-a:hover {
-  color: #1c88ff;
-}
-
-.page-content {
-  margin-top: 20px;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
 }

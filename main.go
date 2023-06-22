@@ -2,143 +2,148 @@ package main
 
 import (
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
-	"github.com/russross/blackfriday/v2"
+	"github.com/shurcooL/github_flavored_markdown"
 )
 
-// Page represents a markdown page
+// Page represents a single page with its title and HTML content.
 type Page struct {
-	Title string
-	Body  template.HTML
+	Title   string
+	Content string
 }
 
-// Navbar represents the navigation bar
-type Navbar struct {
-	Home       string
-	GitHub     string
-	Email      string
-	DarkMode   bool
-	DarkModeJS template.JS
-}
+// generatePages traverses the specified directory, reads markdown files,
+// converts them to HTML, and generates Page objects for each file.
+func generatePages(dirPath string) ([]Page, error) {
+	var pages []Page
 
-// Footer represents the footer
-type Footer struct {
-	Text string
-}
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-// GeneratePageHTML generates the HTML for a markdown page
-func GeneratePageHTML(markdownPath string) (template.HTML, error) {
-	data, err := ioutil.ReadFile(markdownPath)
-	if err != nil {
-		return "", err
-	}
+		if !info.IsDir() && filepath.Ext(path) == ".md" && filepath.Base(path) != "README.md" {
+			content, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
 
-	renderer := blackfriday.NewHTMLRenderer(blackfriday.HTMLRendererParameters{
-		Flags: blackfriday.CommonHTMLFlags | blackfriday.HrefTargetBlank,
+			htmlContent := string(github_flavored_markdown.Markdown(content))
+
+			var page Page
+			page.Title = strings.TrimSuffix(info.Name(), ".md")
+			page.Content = htmlContent
+
+			pages = append(pages, page)
+		}
+
+		return nil
 	})
 
-	html := blackfriday.Run(data, blackfriday.WithRenderer(renderer))
-	return template.HTML(html), nil
+	return pages, err
 }
 
-// GenerateIndexHTML generates the HTML for the index page
-func GenerateIndexHTML(pages []string) (string, error) {
-	indexTmpl, err := template.ParseFiles("templates/index.html")
+// getReadmeContent reads the contents of the README.md file, converts it to HTML,
+// and returns it as a string.
+func getReadmeContent(readmePath string) (string, error) {
+	content, err := ioutil.ReadFile(readmePath)
 	if err != nil {
 		return "", err
 	}
 
-	builder := strings.Builder{}
-	err = indexTmpl.Execute(&builder, struct {
-		Navbar Navbar
-		Pages  []string
-		Footer Footer
-	}{
-		Navbar: Navbar{
-			Home:       "index.html",
-			GitHub:     "https://github.com/",
-			Email:      "mailto:example@example.com",
-			DarkMode:   true,
-			DarkModeJS: template.JS(`toggleDarkMode()`),
-		},
-		Pages:  pages,
-		Footer: Footer{Text: "© 2023 My Website. All rights reserved."},
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	return builder.String(), nil
+	htmlContent := string(github_flavored_markdown.Markdown(content))
+	return htmlContent, nil
 }
 
 func main() {
-	markdownDir := "markdown"
-	outputDir := "public"
+	// Directory containing the markdown files
+	dirPath := "markdown"
 
-	err := os.MkdirAll(outputDir, os.ModePerm)
+	// Path to the README.md file
+	readmePath := filepath.Join(dirPath, "README.md")
+
+	// Output directory for generated HTML pages
+	outputDir := "output"
+
+	// Load templates
+	templates := template.Must(template.ParseGlob("templates/*.html"))
+
+	// Generate pages
+	pages, err := generatePages(dirPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	files, err := ioutil.ReadDir(markdownDir)
+	// Create output directory if it doesn't exist
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		os.Mkdir(outputDir, os.ModePerm)
+	}
+
+	// Generate static HTML pages
+	for _, page := range pages {
+		// Create the output file
+		outputFile := filepath.Join(outputDir, page.Title+".html")
+		file, err := os.Create(outputFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Combine the templates to generate the final HTML content
+		err = templates.ExecuteTemplate(file, "page.html", page)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		file.Close()
+	}
+
+	// Generate the index page
+	indexFile, err := os.Create(filepath.Join(outputDir, "index.html"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer indexFile.Close()
+
+	// Generate the buttons for each page
+	var buttonHTML strings.Builder
+	counter := 0
+	for _, page := range pages {
+		// Add a newline and padding if more than 3 buttons have been added
+		if counter > 0 && counter%3 == 0 {
+			buttonHTML.WriteString("<br>")
+		}
+
+		// Add the button
+		buttonHTML.WriteString(fmt.Sprintf(`<a href="%s.html" class="button">%s</a>`, page.Title, page.Title))
+
+		counter++
+	}
+
+	// Get the contents of the README.md file
+	readmeContent, err := getReadmeContent(readmePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pages := []string{}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		markdownPath := filepath.Join(markdownDir, file.Name())
-		pagePath := filepath.Join(outputDir, strings.TrimSuffix(file.Name(), ".md")+".html")
-
-		html, err := GeneratePageHTML(markdownPath)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		pageTmpl, err := template.ParseFiles("templates/page.html")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		fileContent := strings.Builder{}
-		err = pageTmpl.Execute(&fileContent, Page{
-			Title: strings.TrimSuffix(file.Name(), ".md"),
-			Body:  html,
-		})
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = ioutil.WriteFile(pagePath, []byte(fileContent.String()), 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		pages = append(pages, strings.TrimPrefix(pagePath, outputDir+"/"))
+	// Combine the templates to generate the final HTML content for the index page
+	data := struct {
+		Buttons       string
+		ReadmeContent string
+	}{
+		Buttons:       buttonHTML.String(),
+		ReadmeContent: readmeContent,
 	}
 
-	indexHTML, err := GenerateIndexHTML(pages)
+	err = templates.ExecuteTemplate(indexFile, "index.html", data)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	indexPath := filepath.Join(outputDir, "index.html")
-	err = ioutil.WriteFile(indexPath, []byte(indexHTML), 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Static webpage built successfully in the '%s' directory.\n", outputDir)
+	log.Println("Static pages generated successfully.")
 }

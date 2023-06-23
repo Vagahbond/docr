@@ -9,7 +9,10 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/shurcooL/github_flavored_markdown"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer/html"
 )
 
 // Page represents a single page with its title and HTML content.
@@ -34,7 +37,7 @@ func generatePages(dirPath string) ([]Page, error) {
 				return err
 			}
 
-			htmlContent := string(github_flavored_markdown.Markdown(content))
+			htmlContent := renderMarkdown(content)
 
 			var page Page
 			page.Title = strings.TrimSuffix(info.Name(), ".md")
@@ -49,6 +52,22 @@ func generatePages(dirPath string) ([]Page, error) {
 	return pages, err
 }
 
+// renderMarkdown converts the given Markdown content to HTML using goldmark.
+func renderMarkdown(content []byte) string {
+	md := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
+		goldmark.WithRendererOptions(html.WithHardWraps()),
+	)
+
+	var buf strings.Builder
+	if err := md.Convert(content, &buf); err != nil {
+		log.Fatal(err)
+	}
+
+	return buf.String()
+}
+
 // getReadmeContent reads the contents of the README.md file, converts it to HTML,
 // and returns it as a string.
 func getReadmeContent(readmePath string) (string, error) {
@@ -57,7 +76,7 @@ func getReadmeContent(readmePath string) (string, error) {
 		return "", err
 	}
 
-	htmlContent := string(github_flavored_markdown.Markdown(content))
+	htmlContent := renderMarkdown(content)
 	return htmlContent, nil
 }
 
@@ -83,6 +102,12 @@ func main() {
 	// Create output directory if it doesn't exist
 	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
 		os.Mkdir(outputDir, os.ModePerm)
+	}
+
+	// Copy static files to output directory
+	err = copyStaticFiles(outputDir)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Generate static HTML pages
@@ -146,4 +171,79 @@ func main() {
 	}
 
 	log.Println("Static pages generated successfully.")
+}
+
+// copyStaticFiles copies the static files (CSS, JS, etc.) to the output directory.
+func copyStaticFiles(outputDir string) error {
+	// Source directories containing static files
+	cssDir := "templates/css"
+	jsDir := "templates/js"
+
+	// Create the CSS directory in the output directory
+	err := os.MkdirAll(filepath.Join(outputDir, "css"), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	// Copy CSS files
+	err = filepath.Walk(cssDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			// Read the CSS file
+			content, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			// Create the corresponding file in the output directory
+			outputPath := filepath.Join(outputDir, "css", filepath.Base(path))
+			err = ioutil.WriteFile(outputPath, content, os.ModePerm)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Create the JS directory in the output directory
+	err = os.MkdirAll(filepath.Join(outputDir, "js"), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	// Copy JS files
+	err = filepath.Walk(jsDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			// Read the JS file
+			content, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			// Create the corresponding file in the output directory
+			outputPath := filepath.Join(outputDir, "js", filepath.Base(path))
+			err = ioutil.WriteFile(outputPath, content, os.ModePerm)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

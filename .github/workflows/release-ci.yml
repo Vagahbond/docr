@@ -5,6 +5,8 @@ name: Go Build & Release CI
 # events but only for the master branch
 on:
   push:
+    tags:
+      - "v*"
   workflow_dispatch:
   pull_request:
     branch: dev

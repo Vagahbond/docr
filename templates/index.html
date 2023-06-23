@@ -1,30 +1,33 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <meta charset="utf-8" />
-    <title>My Static Website</title>
-    <link rel="stylesheet" href="./css/styles.css">
-</head>
-<body>
+    <title>{{.WebsiteName}}</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+      integrity="sha512-lGJFUWJWn9cSqQ6Z21T4YO+nmkUa7EzPcZ9LhEQBlFhT/9cD8btfJkgMlLHlMfsG56HW3Qc30RXAPCRRaOW8tA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="./css/page.css" />
+    <script src="./js/prism.js"></script>
+  </head>
+
+  <body>
     {{template "navbar.html" .}}
 
     <div class="container">
-        <h1>Welcome to My Static Website!</h1>
-        <div class="content">
-            <h2>About</h2>
-            <p>This is a static website generated using Go and Markdown.</p>
-        </div>
+      <h1>{{.WebsiteName}}</h1>
+      <div class="content">
+        <div class="content">{{.ReadmeContent}}</div>
+      </div>
 
-        <h2>Pages</h2>
-        <div class="buttons">
-            {{.Buttons}}
-        </div>
-
-        <div class="content">
-            {{.ReadmeContent}}
-        </div>
+      <h2>Available Notes</h2>
+      <div class="buttons">{{.Buttons}}</div>
     </div>
 
     {{template "footer.html" .}}
-</body>
+  </body>
 </html>

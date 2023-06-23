@@ -7,12 +7,7 @@
 
   outputs = inputs @ {flake-parts, ...}:
     flake-parts.lib.mkFlake {inherit inputs;} {
-      imports = [
-        # To import a flake module
-        # 1. Add foo to inputs
-        # 2. Add foo as a parameter to the outputs function
-        # 3. Add here: foo.flakeModule
-      ];
+      imports = [];
       systems = ["x86_64-linux" "aarch64-darwin"];
       perSystem = {
         config,
@@ -22,12 +17,19 @@
         system,
         ...
       }: {
-        # Per-system attributes can be defined here. The self' and inputs'
-        # module parameters provide easy access to attributes of the same
-        # system.
+        devShells.default = pkgs.mkShell {
+          name = "nyx";
+          packages = with pkgs; [
+            nil # nix ls
+            alejandra # formatter
+            git # flakes require git, and so do I
+            glow # markdown viewer
+            nodePackages.serve # serve static content over http
+          ];
+        };
 
-        # Equivalent to  inputs'.nixpkgs.legacyPackages.hello;
-        packages.default = pkgs.hello;
+        # provide the formatter for nix fmt
+        formatter = pkgs.alejandra;
       };
       flake = {
         # The usual flake attributes can be defined here, including system-

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -21,14 +22,20 @@ type Page struct {
 	Content string
 }
 
-// FooterData represents the data for the footer.
-type FooterData struct {
-	Year int
+// Footer represents the footer section in the template.
+type Footer struct {
+	Year string
 }
 
-// NavbarData represents the data for the navbar.
-type NavbarData struct {
+// Navbar represents the navigation bar section in the template.
+type Navbar struct {
 	Pages []Page
+}
+
+// Settings represents the configuration settings.
+type Settings struct {
+	GithubUsername string `json:"githubUsername"`
+	WebsiteName    string `json:"websiteName"`
 }
 
 // generatePages traverses the specified directory, reads markdown files,
@@ -120,30 +127,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Generate static HTML pages
-	for _, page := range pages {
-		// Create the output file
-		outputFile := filepath.Join(outputDir, page.Title+".html")
-		file, err := os.Create(outputFile)
-		if err != nil {
-			log.Fatal(err)
-		}
+	// Load settings from settings.json file
+	settingsFile, err := ioutil.ReadFile("settings.json")
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		// Combine the templates to generate the final HTML content
-		err = templates.ExecuteTemplate(file, "page.html", struct {
-			Page
-			Footer FooterData
-			Navbar NavbarData
-		}{
-			Page:   page,
-			Footer: FooterData{Year: 2023}, // Replace with the actual year if needed
-			Navbar: NavbarData{Pages: pages},
-		})
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		file.Close()
+	var settings Settings
+	err = json.Unmarshal(settingsFile, &settings)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Generate the index page
@@ -176,15 +169,19 @@ func main() {
 
 	// Combine the templates to generate the final HTML content for the index page
 	data := struct {
-		Buttons       string
-		ReadmeContent string
-		Footer        FooterData
-		Navbar        NavbarData
+		Buttons        string
+		ReadmeContent  string
+		GithubUsername string
+		WebsiteName    string
+		Navbar         Navbar
+		Footer         Footer
 	}{
-		Buttons:       buttonHTML.String(),
-		ReadmeContent: readmeContent,
-		Footer:        FooterData{Year: 2023}, // Replace with the actual year if needed
-		Navbar:        NavbarData{Pages: pages},
+		Buttons:        buttonHTML.String(),
+		ReadmeContent:  readmeContent,
+		GithubUsername: settings.GithubUsername,
+		WebsiteName:    settings.WebsiteName,
+		Navbar:         Navbar{Pages: pages},
+		Footer:         Footer{Year: "2023"}, // Update with the appropriate year
 	}
 
 	err = templates.ExecuteTemplate(indexFile, "index.html", data)

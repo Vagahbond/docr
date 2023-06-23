@@ -21,6 +21,16 @@ type Page struct {
 	Content string
 }
 
+// FooterData represents the data for the footer.
+type FooterData struct {
+	Year int
+}
+
+// NavbarData represents the data for the navbar.
+type NavbarData struct {
+	Pages []Page
+}
+
 // generatePages traverses the specified directory, reads markdown files,
 // converts them to HTML, and generates Page objects for each file.
 func generatePages(dirPath string) ([]Page, error) {
@@ -120,7 +130,15 @@ func main() {
 		}
 
 		// Combine the templates to generate the final HTML content
-		err = templates.ExecuteTemplate(file, "page.html", page)
+		err = templates.ExecuteTemplate(file, "page.html", struct {
+			Page
+			Footer FooterData
+			Navbar NavbarData
+		}{
+			Page:   page,
+			Footer: FooterData{Year: 2023}, // Replace with the actual year if needed
+			Navbar: NavbarData{Pages: pages},
+		})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -160,9 +178,13 @@ func main() {
 	data := struct {
 		Buttons       string
 		ReadmeContent string
+		Footer        FooterData
+		Navbar        NavbarData
 	}{
 		Buttons:       buttonHTML.String(),
 		ReadmeContent: readmeContent,
+		Footer:        FooterData{Year: 2023}, // Replace with the actual year if needed
+		Navbar:        NavbarData{Pages: pages},
 	}
 
 	err = templates.ExecuteTemplate(indexFile, "index.html", data)

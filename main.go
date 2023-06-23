@@ -72,7 +72,7 @@ func generatePages(dirPath string) ([]Page, error) {
 // renderMarkdown converts the given Markdown content to HTML using goldmark.
 func renderMarkdown(content []byte) string {
 	md := goldmark.New(
-		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithExtensions(extension.GFM, extension.Table, extension.Footnote, extension.Linkify),
 		goldmark.WithParserOptions(parser.WithAutoHeadingID()),
 		goldmark.WithRendererOptions(html.WithHardWraps()),
 	)
@@ -83,113 +83,6 @@ func renderMarkdown(content []byte) string {
 	}
 
 	return buf.String()
-}
-
-// getReadmeContent reads the contents of the README.md file, converts it to HTML,
-// and returns it as a string.
-func getReadmeContent(readmePath string) (string, error) {
-	content, err := ioutil.ReadFile(readmePath)
-	if err != nil {
-		return "", err
-	}
-
-	htmlContent := renderMarkdown(content)
-	return htmlContent, nil
-}
-
-func main() {
-	// Directory containing the markdown files
-	dirPath := "markdown"
-
-	// Path to the README.md file
-	readmePath := filepath.Join(dirPath, "README.md")
-
-	// Output directory for generated HTML pages
-	outputDir := "output"
-
-	// Load templates
-	templates := template.Must(template.ParseGlob("templates/*.html"))
-
-	// Generate pages
-	pages, err := generatePages(dirPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create output directory if it doesn't exist
-	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
-		os.Mkdir(outputDir, os.ModePerm)
-	}
-
-	// Copy static files to output directory
-	err = copyStaticFiles(outputDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Load settings from settings.json file
-	settingsFile, err := ioutil.ReadFile("settings.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var settings Settings
-	err = json.Unmarshal(settingsFile, &settings)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Generate the index page
-	indexFile, err := os.Create(filepath.Join(outputDir, "index.html"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer indexFile.Close()
-
-	// Generate the buttons for each page
-	var buttonHTML strings.Builder
-	counter := 0
-	for _, page := range pages {
-		// Add a newline and padding if more than 3 buttons have been added
-		if counter > 0 && counter%3 == 0 {
-			buttonHTML.WriteString("<br>")
-		}
-
-		// Add the button
-		buttonHTML.WriteString(fmt.Sprintf(`<a href="%s.html" class="button">%s</a>`, page.Title, page.Title))
-
-		counter++
-	}
-
-	// Get the contents of the README.md file
-	readmeContent, err := getReadmeContent(readmePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Combine the templates to generate the final HTML content for the index page
-	data := struct {
-		Buttons        string
-		ReadmeContent  string
-		GithubUsername string
-		WebsiteName    string
-		Navbar         Navbar
-		Footer         Footer
-	}{
-		Buttons:        buttonHTML.String(),
-		ReadmeContent:  readmeContent,
-		GithubUsername: settings.GithubUsername,
-		WebsiteName:    settings.WebsiteName,
-		Navbar:         Navbar{Pages: pages},
-		Footer:         Footer{Year: "2023"}, // Update with the appropriate year
-	}
-
-	err = templates.ExecuteTemplate(indexFile, "index.html", data)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("Static pages generated successfully.")
 }
 
 // copyStaticFiles copies the static files (CSS, JS, etc.) to the output directory.
@@ -265,4 +158,131 @@ func copyStaticFiles(outputDir string) error {
 	}
 
 	return nil
+}
+
+func main() {
+	// Directory containing the markdown files
+	dirPath := "markdown"
+
+	// Output directory for generated HTML pages
+	outputDir := "output"
+
+	// Load templates
+	templates := template.Must(template.ParseGlob("templates/*.html"))
+
+	// Generate pages
+	pages, err := generatePages(dirPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create output directory if it doesn't exist
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		os.Mkdir(outputDir, os.ModePerm)
+	}
+
+	// Copy static files to output directory
+	err = copyStaticFiles(outputDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Load settings from settings.json file
+	settingsFile, err := ioutil.ReadFile("settings.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var settings Settings
+	err = json.Unmarshal(settingsFile, &settings)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Generate individual pages
+	for _, page := range pages {
+		// Create the output file
+		pageFile, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.html", page.Title)))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer pageFile.Close()
+
+		// Combine the templates to generate the final HTML content for the page
+		data := struct {
+			Title          string
+			Content        string
+			GithubUsername string
+			WebsiteName    string
+			Navbar         Navbar
+			Footer         Footer
+		}{
+			Title:          page.Title,
+			Content:        page.Content,
+			GithubUsername: settings.GithubUsername,
+			WebsiteName:    settings.WebsiteName,
+			Navbar:         Navbar{Pages: pages},
+			Footer:         Footer{Year: "2023"}, // Update with the appropriate year
+		}
+
+		err = templates.ExecuteTemplate(pageFile, "page.html", data)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("Generated page: %s.html\n", page.Title)
+	}
+
+	// Read the README.md file
+	readmeContent, err := ioutil.ReadFile(filepath.Join(dirPath, "README.md"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Convert README.md content to HTML
+	readmeHTML := renderMarkdown(readmeContent)
+
+	// Combine the templates to generate the final HTML content for the index page
+	indexData := struct {
+		WebsiteName    string
+		GithubUsername string
+		ReadmeContent  string
+		Buttons        string
+		Navbar         Navbar
+		Footer         Footer
+	}{
+		WebsiteName:    settings.WebsiteName,
+		GithubUsername: settings.GithubUsername,
+		ReadmeContent:  readmeHTML,
+		Buttons:        generateButtons(pages),
+		Navbar:         Navbar{Pages: pages},
+		Footer:         Footer{Year: "2023"}, // Update with the appropriate year
+	}
+
+	// Create the index.html file
+	indexFile, err := os.Create(filepath.Join(outputDir, "index.html"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer indexFile.Close()
+
+	err = templates.ExecuteTemplate(indexFile, "index.html", indexData)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Static pages generated successfully.")
+}
+
+// generateButtons generates the HTML buttons for each page (excluding index.html).
+func generateButtons(pages []Page) string {
+	var buttons strings.Builder
+	for _, page := range pages {
+		if page.Title != "index" {
+			button := fmt.Sprintf("<a href=\"%s.html\" class=\"button\">%s</a>", page.Title, page.Title)
+			buttons.WriteString(button)
+		}
+	}
+
+	return buttons.String()
 }

@@ -12,7 +12,7 @@ body {
 }
 
 nav {
-  background-color: #f2f2f2;
+  background-color: #1f2223;
   padding: 10px;
   display: flex;
   justify-content: flex-start;
@@ -51,33 +51,29 @@ nav a {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  background-color: #e9e9e9;
-  color: #555;
+  background-color: #1f2223;
+  color: rgba(255, 255, 255, 60);
   border: 1px solid #555;
   border-radius: 4px;
   transition: background-color 0.3s ease;
 }
 
 .button:hover {
-  background-color: #ccc;
+  background-color: #cccccc30;
 }
 
 .button:focus {
   outline: none;
-  box-shadow: 0 0 4px rgba(85, 85, 85, 0.5);
+  box-shadow: 0 0 4px rgba(50, 50, 50, 0.3);
 }
 
 .button:active {
   transform: translateY(1px);
 }
 
-.button:hover {
-  background-color: #ccc;
-}
-
 footer {
-  background-color: #f2f2f2;
+  background-color: #1f2223;
   padding: 20px;
   text-align: center;
-  color: #555;
+  color: rgba(255, 255, 255, 60);
 }

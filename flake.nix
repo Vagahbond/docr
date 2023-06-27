@@ -8,7 +8,7 @@
   outputs = inputs @ {flake-parts, ...}:
     flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [];
-      systems = ["x86_64-linux" "aarch64-darwin"];
+      systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin"];
       perSystem = {
         config,
         self',
@@ -25,6 +25,7 @@
             git # flakes require git, and so do I
             glow # markdown viewer
             nodePackages.serve # serve static content over http
+            go # go language for compiling and running
           ];
         };
 

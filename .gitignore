@@ -3,3 +3,6 @@ output/
 
 # ignore markdown directory for testing
 markdown/
+
+# ignore personalized settings directory
+settings.json

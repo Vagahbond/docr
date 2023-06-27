@@ -24,12 +24,12 @@ const server = http.createServer((req, res) => {
       if (err.code === "ENOENT") {
         console.log(
           `HTTP ${new Date().toLocaleString()} ${
-            req.connection.remoteAddress
+            req.socket.remoteAddress
           } GET ${req.url}`
         );
         console.log(
           `HTTP ${new Date().toLocaleString()} ${
-            req.connection.remoteAddress
+            req.socket.remoteAddress
           } Returned 404 in 1 ms`
         );
 
@@ -38,12 +38,12 @@ const server = http.createServer((req, res) => {
       } else {
         console.log(
           `HTTP ${new Date().toLocaleString()} ${
-            req.connection.remoteAddress
+            req.socket.remoteAddress
           } GET ${req.url}`
         );
         console.log(
           `HTTP ${new Date().toLocaleString()} ${
-            req.connection.remoteAddress
+            req.socket.remoteAddress
           } Returned 500 in 1 ms`
         );
 
@@ -55,13 +55,13 @@ const server = http.createServer((req, res) => {
       const contentType = getContentType(fileExtension);
 
       console.log(
-        `HTTP ${new Date().toLocaleString()} ${
-          req.connection.remoteAddress
-        } GET ${req.url}`
+        `HTTP ${new Date().toLocaleString()} ${req.socket.remoteAddress} GET ${
+          req.url
+        }`
       );
       console.log(
         `HTTP ${new Date().toLocaleString()} ${
-          req.connection.remoteAddress
+          req.socket.remoteAddress
         } Returned 200 in 1 ms`
       );
 

@@ -32,6 +32,7 @@
             glow # markdown viewer
             nodePackages.serve # serve static content over http
             go # go language for compiling and running
+            nodejs-slim # a stripped down version of nodejs to run serve.js
           ];
         };
 

@@ -17,6 +17,12 @@
         system,
         ...
       }: {
+        # configure perSystem's instance of nixpkgs
+        _module.args.pkgs = import inputs.nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
+
         devShells.default = pkgs.mkShell {
           name = "nyx";
           packages = with pkgs; [
@@ -31,6 +37,10 @@
 
         # provide the formatter for nix fmt
         formatter = pkgs.alejandra;
+
+        packages = {
+          servejs = pkgs.callPackage ./nix/serve.nix {};
+        };
       };
       flake = {
         # The usual flake attributes can be defined here, including system-

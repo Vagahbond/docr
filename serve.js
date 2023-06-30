@@ -1,6 +1,8 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { spawnSync } = require("child_process");
+const os = require("os");
 
 const PORT = 3000;
 
@@ -55,9 +57,9 @@ const server = http.createServer((req, res) => {
       const contentType = getContentType(fileExtension);
 
       console.log(
-        `HTTP ${new Date().toLocaleString()} ${req.socket.remoteAddress} GET ${
-          req.url
-        }`
+        `HTTP ${new Date().toLocaleString()} ${
+          req.socket.remoteAddress
+        } GET ${req.url}`
       );
       console.log(
         `HTTP ${new Date().toLocaleString()} ${
@@ -79,10 +81,43 @@ server.listen(PORT, () => {
   console.log(`   │   - Local:    http://localhost:${PORT}       │`);
   console.log(`   │   - Network:  http://192.168.1.130:${PORT}   │`);
   console.log(`   │                                           │`);
-  console.log(`   │   Copied local address to clipboard!      │`);
-  console.log(`   │                                           │`);
   console.log(`   └───────────────────────────────────────────┘\n`);
+
+  const ipAddress = getIPAddress();
+  copyToClipboard(ipAddress);
+  console.log(`IP address copied to clipboard: ${ipAddress}`);
 });
+
+function getIPAddress() {
+  const networkInterfaces = os.networkInterfaces();
+  for (const interfaceName of Object.keys(networkInterfaces)) {
+    const interfaces = networkInterfaces[interfaceName];
+    for (const { family, address, internal } of interfaces) {
+      if (family === "IPv4" && !internal) {
+        return address;
+      }
+    }
+  }
+  return "Unknown";
+}
+
+function copyToClipboard(text) {
+  if (process.platform === "linux") {
+    const xclipProcess = spawnSync("xclip", ["-selection", "clipboard"], {
+      input: text,
+    });
+    if (xclipProcess.error) {
+      console.error("Failed to copy to clipboard:", xclipProcess.error.message);
+    }
+  } else if (process.platform === "darwin") {
+    const pbcopyProcess = spawnSync("pbcopy", [], { input: text });
+    if (pbcopyProcess.error) {
+      console.error("Failed to copy to clipboard:", pbcopyProcess.error.message);
+    }
+  } else {
+    console.warn("Clipboard access not supported on this platform.");
+  }
+}
 
 function getContentType(fileExtension) {
   switch (fileExtension) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -120,11 +121,25 @@ func renderMarkdown(content []byte) string {
 	return buf.String()
 }
 
+// generateButtons generates the HTML buttons for each page (excluding index.html).
+func generateButtons(pages []Page) string {
+	var buttons strings.Builder
+	for _, page := range pages {
+		if page.Title != "index" {
+			button := fmt.Sprintf("<a href=\"%s.html\" class=\"button\">%s</a>", page.Title, page.Title)
+			buttons.WriteString(button)
+		}
+	}
+
+	return buttons.String()
+}
+
 // copyStaticFiles copies the static files (CSS, JS, etc.) to the output directory.
-func copyStaticFiles(outputDir string) error {
+func copyStaticFiles(outputDir string, templateDir string) error {
 	// Source directories containing static files
-	cssDir := viper.GetString("templateDir") + "/css"
-	jsDir := viper.GetString("templateDir") + "/js"
+	cssDir := filepath.Join(templateDir, "css")
+	jsDir := filepath.Join(templateDir, "js")
+	xslFile := filepath.Join(templateDir, "pretty-feed-v3.xsl")
 
 	// Create the CSS directory in the output directory
 	err := os.MkdirAll(filepath.Join(outputDir, "css"), os.ModePerm)
@@ -193,6 +208,18 @@ func copyStaticFiles(outputDir string) error {
 		return err
 	}
 
+	// Copy the pretty-feed-v3.xsl file to the output directory
+	xslContent, err := ioutil.ReadFile(xslFile)
+	if err != nil {
+		return err
+	}
+
+	xslOutputPath := filepath.Join(outputDir, "pretty-feed-v3.xsl")
+	err = ioutil.WriteFile(xslOutputPath, xslContent, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -230,14 +257,32 @@ func generateRSS(pages []Page, settings Settings) error {
 		return err
 	}
 
+	// Create a buffer to hold the modified XML content
+	xmlBuf := &bytes.Buffer{}
+
+	// Write the XML processing instruction for the stylesheet
+	stylesheetProcessingInstruction := fmt.Sprintf(`<?xml-stylesheet href="pretty-feed-v3.xsl" type="text/xsl"?>%s`, "\n")
+	xmlBuf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
+	xmlBuf.WriteString(stylesheetProcessingInstruction)
+
+	// Write the rest of the XML content
+	xmlBuf.Write(xmlContent)
+
 	rssFilePath := filepath.Join(settings.OutputDir, "rss.xml")
-	err = ioutil.WriteFile(rssFilePath, []byte(xml.Header+string(xmlContent)), os.ModePerm)
+	err = ioutil.WriteFile(rssFilePath, xmlBuf.Bytes(), os.ModePerm)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
+// generatePrettyFeedProcessingInstruction generates the XML processing instruction
+// for the pretty-feed-v3.xsl stylesheet.
+func generatePrettyFeedProcessingInstruction(prettyFeedPath string) string {
+	return fmt.Sprintf(`<?xml-stylesheet href="%s" type="text/xsl"?>`, "pretty-feed-v3.xsl")
+}
+
 func initLogger() {
 	log.SetFormatter(&logrus.TextFormatter{
 		DisableTimestamp: true,
@@ -276,8 +321,11 @@ func main() {
 	// Output directory for generated HTML pages
 	outputDir := viper.GetString("outputDir")
 
+	// Template directory
+	templateDir := viper.GetString("templateDir")
+
 	// Load templates
-	templates := template.Must(template.ParseGlob(viper.GetString("templateDir") + "/*.html"))
+	templates := template.Must(template.ParseGlob(filepath.Join(templateDir, "*.html")))
 
 	// Generate pages
 	pages, err := generatePages(dirPath)
@@ -291,7 +339,7 @@ func main() {
 	}
 
 	// Copy static files to output directory
-	err = copyStaticFiles(outputDir)
+	err = copyStaticFiles(outputDir, templateDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -351,19 +399,21 @@ func main() {
 
 	// Combine the templates to generate the final HTML content for the index page
 	indexData := struct {
-		WebsiteName    string
-		GithubUsername string
-		ReadmeContent  string
-		Buttons        string
-		Navbar         Navbar
-		Footer         Footer
+		WebsiteName                     string
+		GithubUsername                  string
+		ReadmeContent                   string
+		Buttons                         string
+		Navbar                          Navbar
+		Footer                          Footer
+		PrettyFeedProcessingInstruction string
 	}{
-		WebsiteName:    settings.WebsiteName,
-		GithubUsername: settings.GithubUsername,
-		ReadmeContent:  readmeHTML,
-		Buttons:        generateButtons(pages),
-		Navbar:         Navbar{Pages: pages},
-		Footer:         Footer{Year: "2023"}, // Update with the appropriate year
+		WebsiteName:                     settings.WebsiteName,
+		GithubUsername:                  settings.GithubUsername,
+		ReadmeContent:                   readmeHTML,
+		Buttons:                         generateButtons(pages),
+		Navbar:                          Navbar{Pages: pages},
+		Footer:                          Footer{Year: "2023"}, // Update with the appropriate year
+		PrettyFeedProcessingInstruction: generatePrettyFeedProcessingInstruction(filepath.Join(settings.TemplateDir, "pretty-feed-v3.xsl")),
 	}
 
 	// Create the index.html file
@@ -385,17 +435,4 @@ func main() {
 	}
 
 	log.Println("Static pages and RSS feed generated successfully.")
-}
-
-// generateButtons generates the HTML buttons for each page (excluding index.html).
-func generateButtons(pages []Page) string {
-	var buttons strings.Builder
-	for _, page := range pages {
-		if page.Title != "index" {
-			button := fmt.Sprintf("<a href=\"%s.html\" class=\"button\">%s</a>", page.Title, page.Title)
-			buttons.WriteString(button)
-		}
-	}
-
-	return buttons.String()
 }

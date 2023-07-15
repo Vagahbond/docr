@@ -15,11 +15,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Archive contents of the templates directory
+        run: tar -czvf templates.tar.gz templates
+
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            templates/*
+            templates.tar.gz
             README.md
-            LICENSE

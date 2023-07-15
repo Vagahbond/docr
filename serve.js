@@ -21,56 +21,101 @@ const server = http.createServer((req, res) => {
     filePath += ".html";
   }
 
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      if (err.code === "ENOENT") {
-        console.log(
-          `HTTP ${new Date().toLocaleString()} ${
-            req.socket.remoteAddress
-          } GET ${req.url}`
-        );
-        console.log(
-          `HTTP ${new Date().toLocaleString()} ${
-            req.socket.remoteAddress
-          } Returned 404 in 1 ms`
-        );
+  if (path.extname(filePath) === ".xml") {
+    // Serve the RSS feed file directly
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        if (err.code === "ENOENT") {
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } GET ${req.url}`,
+          );
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } Returned 404 in 1 ms`,
+          );
 
-        res.writeHead(404, { "Content-Type": "text/html" });
-        res.end("<h1>404 Not Found</h1>");
+          res.writeHead(404, { "Content-Type": "text/html" });
+          res.end("<h1>404 Not Found</h1>");
+        } else {
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } GET ${req.url}`,
+          );
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } Returned 500 in 1 ms`,
+          );
+
+          res.writeHead(500, { "Content-Type": "text/html" });
+          res.end("<h1>500 Server Error</h1>");
+        }
       } else {
-        console.log(
-          `HTTP ${new Date().toLocaleString()} ${
-            req.socket.remoteAddress
-          } GET ${req.url}`
-        );
-        console.log(
-          `HTTP ${new Date().toLocaleString()} ${
-            req.socket.remoteAddress
-          } Returned 500 in 1 ms`
-        );
-
-        res.writeHead(500, { "Content-Type": "text/html" });
-        res.end("<h1>500 Server Error</h1>");
+        res.writeHead(200, {
+          "Content-Type": "application/rss+xml",
+        });
+        res.end(content);
       }
-    } else {
-      const fileExtension = path.extname(filePath);
-      const contentType = getContentType(fileExtension);
+    });
+  } else {
+    // Serve other files (HTML, CSS, JS, etc.)
+    fs.readFile(filePath, (err, content) => {
+      if (err) {
+        if (err.code === "ENOENT") {
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } GET ${req.url}`,
+          );
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } Returned 404 in 1 ms`,
+          );
 
-      console.log(
-        `HTTP ${new Date().toLocaleString()} ${
-          req.socket.remoteAddress
-        } GET ${req.url}`
-      );
-      console.log(
-        `HTTP ${new Date().toLocaleString()} ${
-          req.socket.remoteAddress
-        } Returned 200 in 1 ms`
-      );
+          res.writeHead(404, { "Content-Type": "text/html" });
+          res.end("<h1>404 Not Found</h1>");
+        } else {
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } GET ${req.url}`,
+          );
+          console.log(
+            `HTTP ${new Date().toLocaleString()} ${
+              req.socket.remoteAddress
+            } Returned 500 in 1 ms`,
+          );
 
-      res.writeHead(200, { "Content-Type": contentType });
-      res.end(content);
-    }
-  });
+          res.writeHead(500, { "Content-Type": "text/html" });
+          res.end("<h1>500 Server Error</h1>");
+        }
+      } else {
+        const fileExtension = path.extname(filePath);
+        const contentType = getContentType(fileExtension);
+
+        console.log(
+          `HTTP ${new Date().toLocaleString()} ${
+            req.socket.remoteAddress
+          } GET ${req.url}`,
+        );
+        console.log(
+          `HTTP ${new Date().toLocaleString()} ${
+            req.socket.remoteAddress
+          } Returned 200 in 1 ms`,
+        );
+
+        res.writeHead(200, {
+          "Content-Type": contentType,
+        });
+        res.end(content);
+      }
+    });
+  }
 });
 
 server.listen(PORT, () => {
@@ -112,7 +157,10 @@ function copyToClipboard(text) {
   } else if (process.platform === "darwin") {
     const pbcopyProcess = spawnSync("pbcopy", [], { input: text });
     if (pbcopyProcess.error) {
-      console.error("Failed to copy to clipboard:", pbcopyProcess.error.message);
+      console.error(
+        "Failed to copy to clipboard:",
+        pbcopyProcess.error.message,
+      );
     }
   } else {
     console.warn("Clipboard access not supported on this platform.");
@@ -131,7 +179,34 @@ function getContentType(fileExtension) {
       return "image/png";
     case ".jpg":
       return "image/jpeg";
+    case ".xml":
+      return "text/xml";
     default:
       return "application/octet-stream";
   }
 }
+
+server.on("request", (req, res) => {
+  let filePath = path.join(STATIC_DIRECTORY, req.url);
+  if (filePath === path.join(STATIC_DIRECTORY, "/")) {
+    filePath = path.join(STATIC_DIRECTORY, "index.html");
+  } else if (!path.extname(filePath)) {
+    filePath += ".html";
+  }
+
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      // Error handling code...
+    } else {
+      const fileExtension = path.extname(filePath);
+      const contentType = getContentType(fileExtension);
+
+      res.writeHead(200, {
+        "Content-Type": contentType,
+        "Content-Disposition":
+          fileExtension === ".xml" ? "inline" : "attachment",
+      });
+      res.end(content);
+    }
+  });
+});

@@ -1,5 +1,7 @@
 {
   "githubUsername": "your_github_username",
-  "websiteName": "Your Website Name"
+  "websiteName": "Your Website",
+  "templateDir": "templates",
+  "markdownDir": "markdown",
+  "outputDir": "output"
 }
-

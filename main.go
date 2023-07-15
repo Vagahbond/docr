@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
+	"encoding/xml"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/yuin/goldmark"
@@ -34,11 +36,29 @@ type Navbar struct {
 
 // Settings represents the configuration settings.
 type Settings struct {
-	GithubUsername string `json:"githubUsername"`
-	WebsiteName    string `json:"websiteName"`
-	TemplateDir    string `json:"templateDir"`
-	MarkdownDir    string `json:"markdownDir"`
-	OutputDir      string `json:"outputDir"`
+	GithubUsername     string `json:"githubUsername"`
+	WebsiteName        string `json:"websiteName"`
+	TemplateDir        string `json:"templateDir"`
+	MarkdownDir        string `json:"markdownDir"`
+	OutputDir          string `json:"outputDir"`
+	WebsiteURL         string `json:"websiteURL"`
+	WebsiteDescription string `json:"websiteDescription"`
+}
+
+// RSSItem represents an individual item in the RSS feed.
+type RSSItem struct {
+	Title       string `xml:"title"`
+	Link        string `xml:"link"`
+	Description string `xml:"description"`
+	PubDate     string `xml:"pubDate"`
+}
+
+type RSSChannel struct {
+	XMLName     xml.Name  `xml:"channel"`
+	Title       string    `xml:"title"`
+	Link        string    `xml:"link"`
+	Description string    `xml:"description"`
+	Items       []RSSItem `xml:"item"`
 }
 
 var log = logrus.New()
@@ -168,6 +188,7 @@ func copyStaticFiles(outputDir string) error {
 
 		return nil
 	})
+
 	if err != nil {
 		return err
 	}
@@ -175,12 +196,53 @@ func copyStaticFiles(outputDir string) error {
 	return nil
 }
 
+// generateRSS generates the RSS feed based on the provided pages.
+func generateRSS(pages []Page, settings Settings) error {
+	var rssItems []RSSItem
+	for _, page := range pages {
+		item := RSSItem{
+			Title:       page.Title,
+			Link:        fmt.Sprintf("%s.html", page.Title),
+			Description: page.Content,
+			PubDate:     time.Now().Format(time.RFC1123Z),
+		}
+		rssItems = append(rssItems, item)
+	}
+
+	channel := RSSChannel{
+		Title:       settings.WebsiteName,
+		Link:        settings.WebsiteURL,
+		Description: settings.WebsiteDescription,
+		Items:       rssItems,
+	}
+
+	rss := struct {
+		XMLName xml.Name   `xml:"rss"`
+		Version string     `xml:"version,attr"`
+		Channel RSSChannel `xml:"channel"`
+	}{
+		Version: "2.0",
+		Channel: channel,
+	}
+
+	xmlContent, err := xml.MarshalIndent(rss, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	rssFilePath := filepath.Join(settings.OutputDir, "rss.xml")
+	err = ioutil.WriteFile(rssFilePath, []byte(xml.Header+string(xmlContent)), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 func initLogger() {
 	log.SetFormatter(&logrus.TextFormatter{
 		DisableTimestamp: true,
 	})
 }
-
 
 func configureViper() {
 	viper.SetConfigName("settings")
@@ -194,6 +256,8 @@ func configureViper() {
 	viper.BindEnv("templateDir", "DOCR_TEMPLATE_DIR")
 	viper.BindEnv("markdownDir", "DOCR_MARKDOWN_DIR")
 	viper.BindEnv("outputDir", "DOCR_OUTPUT_DIR")
+	viper.BindEnv("websiteURL", "DOCR_WEBSITE_URL")
+	viper.BindEnv("websiteDescription", "DOCR_WEBSITE_DESCRIPTION")
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Warnf("Failed to read configuration file: %v", err)
@@ -201,7 +265,6 @@ func configureViper() {
 		log.Info("Using configuration file:", viper.ConfigFileUsed())
 	}
 }
-
 
 func main() {
 	initLogger()
@@ -315,7 +378,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println("Static pages generated successfully.")
+	// Generate RSS feed
+	err = generateRSS(pages, settings)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Static pages and RSS feed generated successfully.")
 }
 
 // generateButtons generates the HTML buttons for each page (excluding index.html).

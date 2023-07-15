@@ -19,10 +19,11 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 )
 
-// Page represents a single page with its title and HTML content.
+// Page represents a single page with its title, HTML content, and modification date.
 type Page struct {
-	Title   string
-	Content string
+	Title            string
+	Content          string
+	ModificationDate time.Time
 }
 
 // Footer represents the footer section in the template.
@@ -95,6 +96,7 @@ func generatePages(dirPath string) ([]Page, error) {
 			var page Page
 			page.Title = strings.TrimSuffix(info.Name(), ".md")
 			page.Content = htmlContent
+			page.ModificationDate = info.ModTime()
 
 			pages = append(pages, page)
 		}
@@ -231,7 +233,7 @@ func generateRSS(pages []Page, settings Settings) error {
 			Title:       page.Title,
 			Link:        fmt.Sprintf("%s.html", page.Title),
 			Description: page.Content,
-			PubDate:     time.Now().Format(time.RFC1123Z),
+			PubDate:     page.ModificationDate.Format(time.RFC1123Z),
 		}
 		rssItems = append(rssItems, item)
 	}
@@ -365,19 +367,21 @@ func main() {
 
 		// Combine the templates to generate the final HTML content for the page
 		data := struct {
-			Title          string
-			Content        string
-			GithubUsername string
-			WebsiteName    string
-			Navbar         Navbar
-			Footer         Footer
+			Title            string
+			Content          string
+			GithubUsername   string
+			WebsiteName      string
+			Navbar           Navbar
+			Footer           Footer
+			ModificationDate string
 		}{
-			Title:          page.Title,
-			Content:        page.Content,
-			GithubUsername: settings.GithubUsername,
-			WebsiteName:    settings.WebsiteName,
-			Navbar:         Navbar{Pages: pages},
-			Footer:         Footer{Year: "2023"}, // Update with the appropriate year
+			Title:            page.Title,
+			Content:          page.Content,
+			GithubUsername:   settings.GithubUsername,
+			WebsiteName:      settings.WebsiteName,
+			Navbar:           Navbar{Pages: pages},
+			Footer:           Footer{Year: "2023"}, // Update with the appropriate year
+			ModificationDate: page.ModificationDate.Format(time.RFC1123),
 		}
 
 		err = templates.ExecuteTemplate(pageFile, "page.html", data)

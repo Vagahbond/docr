@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -239,6 +240,11 @@ func copyStaticFiles(outputDir string, templateDir string) error {
 
 // generateRSS generates the RSS feed based on the provided pages.
 func generateRSS(pages []Page, settings Settings) error {
+	// Sort the pages by modification date in descending order
+	sort.Slice(pages, func(i, j int) bool {
+		return pages[i].ModificationDate.After(pages[j].ModificationDate)
+	})
+
 	var rssItems []RSSItem
 	for _, page := range pages {
 		item := RSSItem{

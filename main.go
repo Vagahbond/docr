@@ -1,15 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
@@ -41,15 +41,15 @@ type Settings struct {
 	OutputDir      string `json:"outputDir"`
 }
 
-// checkDirectories checks before anything else if the directories in Settings struct exists
-// existing the program prematurely if they don't
+var log = logrus.New()
+
+// checkDirectories checks if the directories specified in the settings exist.
 func checkDirectories(settings Settings) {
-	// Check if the directories in Settings struct exist
-	if _, err := os.Stat(settings.TemplateDir); os.IsNotExist(err) {
-		log.Fatal("Error: template directory does not exist")
-	}
-	if _, err := os.Stat(settings.MarkdownDir); os.IsNotExist(err) {
-		log.Fatal("Error: markdown directory does not exist")
+	directories := []string{settings.TemplateDir, settings.MarkdownDir}
+	for _, dir := range directories {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			log.Fatalf("Error: %s directory does not exist", dir)
+		}
 	}
 }
 
@@ -103,9 +103,8 @@ func renderMarkdown(content []byte) string {
 // copyStaticFiles copies the static files (CSS, JS, etc.) to the output directory.
 func copyStaticFiles(outputDir string) error {
 	// Source directories containing static files
-	// they get them from the templates directory as defined by the settings.json file
-	cssDir := "templates/css"
-	jsDir := "templates/js"
+	cssDir := viper.GetString("templateDir") + "/css"
+	jsDir := viper.GetString("templateDir") + "/js"
 
 	// Create the CSS directory in the output directory
 	err := os.MkdirAll(filepath.Join(outputDir, "css"), os.ModePerm)
@@ -176,15 +175,32 @@ func copyStaticFiles(outputDir string) error {
 	return nil
 }
 
+func initLogger() {
+	log.SetFormatter(&logrus.TextFormatter{
+		DisableTimestamp: true,
+	})
+}
+
 func main() {
+	initLogger()
+
+	// Load configuration from settings.json using Viper
+	viper.SetConfigName("settings")
+	viper.SetConfigType("json")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalf("Failed to read configuration: %v", err)
+	}
+
 	// Directory containing the markdown files
-	dirPath := "markdown"
+	dirPath := viper.GetString("markdownDir")
 
 	// Output directory for generated HTML pages
-	outputDir := "output"
+	outputDir := viper.GetString("outputDir")
 
 	// Load templates
-	templates := template.Must(template.ParseGlob("templates/*.html"))
+	templates := template.Must(template.ParseGlob(viper.GetString("templateDir") + "/*.html"))
 
 	// Generate pages
 	pages, err := generatePages(dirPath)
@@ -203,14 +219,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Load settings from settings.json file
-	settingsFile, err := ioutil.ReadFile("settings.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	// Load settings from Viper
 	var settings Settings
-	err = json.Unmarshal(settingsFile, &settings)
+	err = viper.Unmarshal(&settings)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -181,17 +181,31 @@ func initLogger() {
 	})
 }
 
-func main() {
-	initLogger()
 
-	// Load configuration from settings.json using Viper
+func configureViper() {
 	viper.SetConfigName("settings")
 	viper.SetConfigType("json")
 	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Fatalf("Failed to read configuration: %v", err)
+	viper.AutomaticEnv()
+
+	// Bind environment variables
+	viper.BindEnv("githubUsername", "DOCR_GITHUB_USERNAME")
+	viper.BindEnv("websiteName", "DOCR_WEBSITE_NAME")
+	viper.BindEnv("templateDir", "DOCR_TEMPLATE_DIR")
+	viper.BindEnv("markdownDir", "DOCR_MARKDOWN_DIR")
+	viper.BindEnv("outputDir", "DOCR_OUTPUT_DIR")
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Warnf("Failed to read configuration file: %v", err)
+	} else {
+		log.Info("Using configuration file:", viper.ConfigFileUsed())
 	}
+}
+
+
+func main() {
+	initLogger()
+	configureViper()
 
 	// Directory containing the markdown files
 	dirPath := viper.GetString("markdownDir")

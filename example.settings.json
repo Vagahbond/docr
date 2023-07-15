@@ -3,5 +3,7 @@
   "websiteName": "Your Website",
   "templateDir": "templates",
   "markdownDir": "markdown",
-  "outputDir": "output"
+  "outputDir": "output",
+  "websiteUrl": "https://your-website.com",
+  "websiteDescription": "testing description"
 }

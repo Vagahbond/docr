@@ -36,6 +36,21 @@ type Navbar struct {
 type Settings struct {
 	GithubUsername string `json:"githubUsername"`
 	WebsiteName    string `json:"websiteName"`
+	TemplateDir    string `json:"templateDir"`
+	MarkdownDir    string `json:"markdownDir"`
+	OutputDir      string `json:"outputDir"`
+}
+
+// checkDirectories checks before anything else if the directories in Settings struct exists
+// existing the program prematurely if they don't
+func checkDirectories(settings Settings) {
+	// Check if the directories in Settings struct exist
+	if _, err := os.Stat(settings.TemplateDir); os.IsNotExist(err) {
+		log.Fatal("Error: template directory does not exist")
+	}
+	if _, err := os.Stat(settings.MarkdownDir); os.IsNotExist(err) {
+		log.Fatal("Error: markdown directory does not exist")
+	}
 }
 
 // generatePages traverses the specified directory, reads markdown files,
@@ -88,6 +103,7 @@ func renderMarkdown(content []byte) string {
 // copyStaticFiles copies the static files (CSS, JS, etc.) to the output directory.
 func copyStaticFiles(outputDir string) error {
 	// Source directories containing static files
+	// they get them from the templates directory as defined by the settings.json file
 	cssDir := "templates/css"
 	jsDir := "templates/js"
 
@@ -198,6 +214,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Check if the directories in settings exist
+	checkDirectories(settings)
 
 	// Generate individual pages
 	for _, page := range pages {

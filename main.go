@@ -136,8 +136,13 @@ func renderMarkdown(content []byte) string {
 	return buf.String()
 }
 
-// generateButtons generates the HTML buttons for each page (excluding index.html).
+// generateButtons generates the HTML buttons for each page (excluding index.html) in descending order of modification date.
 func generateButtons(pages []Page) string {
+	// Sort the pages by modification date in descending order
+	sort.Slice(pages, func(i, j int) bool {
+		return pages[i].ModificationDate.After(pages[j].ModificationDate)
+	})
+
 	var buttons strings.Builder
 	for _, page := range pages {
 		if page.Title != "index" {

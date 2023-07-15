@@ -38,13 +38,14 @@ type Navbar struct {
 
 // Settings represents the configuration settings.
 type Settings struct {
-	GithubUsername     string `json:"githubUsername"`
-	WebsiteName        string `json:"websiteName"`
-	TemplateDir        string `json:"templateDir"`
-	MarkdownDir        string `json:"markdownDir"`
-	OutputDir          string `json:"outputDir"`
-	WebsiteURL         string `json:"websiteURL"`
-	WebsiteDescription string `json:"websiteDescription"`
+	GithubUsername         string `json:"githubUsername"`
+	WebsiteName            string `json:"websiteName"`
+	TemplateDir            string `json:"templateDir"`
+	MarkdownDir            string `json:"markdownDir"`
+	OutputDir              string `json:"outputDir"`
+	WebsiteURL             string `json:"websiteURL"`
+	WebsiteDescription     string `json:"websiteDescription"`
+	TimestampsFromFilename bool   `json:"timestampsFromFilename"`
 }
 
 // RSSItem represents an individual item in the RSS feed.
@@ -77,7 +78,7 @@ func checkDirectories(settings Settings) {
 
 // generatePages traverses the specified directory, reads markdown files,
 // converts them to HTML, and generates Page objects for each file.
-func generatePages(dirPath string) ([]Page, error) {
+func generatePages(dirPath string, timestampsFromFilename bool) ([]Page, error) {
 	var pages []Page
 
 	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
@@ -95,8 +96,19 @@ func generatePages(dirPath string) ([]Page, error) {
 
 			var page Page
 			page.Title = strings.TrimSuffix(info.Name(), ".md")
+
+			if timestampsFromFilename {
+				timestamp, err := time.Parse("02-01-2006", page.Title)
+				if err == nil {
+					page.ModificationDate = timestamp
+				}
+			}
+
+			if page.ModificationDate.IsZero() {
+				page.ModificationDate = info.ModTime()
+			}
+
 			page.Content = htmlContent
-			page.ModificationDate = info.ModTime()
 
 			pages = append(pages, page)
 		}
@@ -305,6 +317,7 @@ func configureViper() {
 	viper.BindEnv("outputDir", "DOCR_OUTPUT_DIR")
 	viper.BindEnv("websiteURL", "DOCR_WEBSITE_URL")
 	viper.BindEnv("websiteDescription", "DOCR_WEBSITE_DESCRIPTION")
+	viper.BindEnv("timestampsFromFilename", "DOCR_TIMESTAMPS_FROM_FILENAME")
 
 	if err := viper.ReadInConfig(); err != nil {
 		log.Warnf("Failed to read configuration file: %v", err)
@@ -330,7 +343,7 @@ func main() {
 	templates := template.Must(template.ParseGlob(filepath.Join(templateDir, "*.html")))
 
 	// Generate pages
-	pages, err := generatePages(dirPath)
+	pages, err := generatePages(dirPath, viper.GetBool("timestampsFromFilename"))
 	if err != nil {
 		log.Fatal(err)
 	}

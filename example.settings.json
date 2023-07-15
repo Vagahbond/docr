@@ -1,9 +1,10 @@
 {
-  "githubUsername": "your_github_username",
   "websiteName": "Your Website",
+  "githubUsername": "your_github_username",
   "templateDir": "templates",
   "markdownDir": "markdown",
   "outputDir": "output",
-  "websiteUrl": "https://your-website.com",
-  "websiteDescription": "testing description"
+  "websiteURL": "https://your-website.tld",
+  "websiteDescription": "Your website description",
+  "timestampsFromFilename": true
 }

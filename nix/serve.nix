@@ -1,7 +1,6 @@
 {
   stdenvNoCC,
   nodejs,
-  extraFlags ? [],
   lib,
   makeWrapper,
   ...
@@ -26,8 +25,7 @@ stdenvNoCC.mkDerivation {
     ${nodejs}/bin/node --version
     ${makeWrapper} ${nodejs}/bin/node $out/bin/servejs \
       --add-flags $out/lib/node_modules/servejs \
-      --chdir $out/lib/node_modules/servejs \
-      ${lib.concatStringsSep " " (map (flag: "--add-flags ${flag}") extraFlags)}
+      --chdir $out/lib/node_modules/servejs
   '';
 
   meta = with lib; {

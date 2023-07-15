@@ -41,6 +41,7 @@
 
         packages = {
           servejs = pkgs.callPackage ./nix/serve.nix {};
+          docr = pkgs.callPackage ./nix/docr.nix {};
         };
       };
       flake = {

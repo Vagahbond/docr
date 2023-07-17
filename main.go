@@ -359,6 +359,12 @@ func main() {
 		os.Mkdir(outputDir, os.ModePerm)
 	}
 
+	// Delete previous existing static file if they exist
+	err = os.RemoveAll(outputDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Copy static files to output directory
 	err = copyStaticFiles(outputDir, templateDir)
 	if err != nil {

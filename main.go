@@ -3,10 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -88,30 +88,54 @@ func generatePages(dirPath string, timestampsFromFilename bool) ([]Page, error) 
 		}
 
 		if !info.IsDir() && filepath.Ext(path) == ".md" && filepath.Base(path) != "README.md" {
-			content, err := ioutil.ReadFile(path)
-			if err != nil {
-				return err
-			}
+			filename := strings.TrimSuffix(info.Name(), ".md")
+			parts := strings.Split(filename, "-")
 
-			htmlContent := renderMarkdown(content)
-
-			var page Page
-			page.Title = strings.TrimSuffix(info.Name(), ".md")
-
-			if timestampsFromFilename {
-				timestamp, err := time.Parse("02-01-2006", page.Title)
-				if err == nil {
-					page.ModificationDate = timestamp
+			if len(parts) >= 3 && len(parts[0]) == 4 && len(parts[1]) == 2 && len(parts[2]) == 2 {
+				year, _ := strconv.Atoi(parts[0])
+				month, _ := strconv.Atoi(parts[1])
+				day, _ := strconv.Atoi(parts[2])
+				var title string
+				if len(parts) > 3 {
+					title = strings.Join(parts[3:], "-")
 				}
-			}
 
-			if page.ModificationDate.IsZero() {
+				timestamp := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
+				content, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+
+				htmlContent := renderMarkdown(content)
+
+				var page Page
+				if title != "" {
+					page.Title = fmt.Sprintf("%s-%s.html", timestamp.Format("2006-01-02"), title)
+				} else {
+					page.Title = fmt.Sprintf("%s.html", timestamp.Format("2006-01-02"))
+					log.Warnf("Markdown file '%s' is missing a title. Using date as the title.", filepath.Base(path))
+				}
+				page.ModificationDate = timestamp
+				page.Content = htmlContent
+
+				pages = append(pages, page)
+			} else {
+				content, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+
+				htmlContent := renderMarkdown(content)
+
+				var page Page
+				page.Title = fmt.Sprintf("%s.html", filename)
 				page.ModificationDate = info.ModTime()
+				page.Content = htmlContent
+
+				log.Warnf("Markdown file '%s' does not follow the correct naming format (yyyy-mm-dd-title.md). Using filename as title.", filepath.Base(path))
+
+				pages = append(pages, page)
 			}
-
-			page.Content = htmlContent
-
-			pages = append(pages, page)
 		}
 
 		return nil
@@ -175,14 +199,14 @@ func copyStaticFiles(outputDir string, templateDir string) error {
 
 		if !info.IsDir() {
 			// Read the CSS file
-			content, err := ioutil.ReadFile(path)
+			content, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
 
 			// Create the corresponding file in the output directory
 			outputPath := filepath.Join(outputDir, "css", filepath.Base(path))
-			err = ioutil.WriteFile(outputPath, content, os.ModePerm)
+			err = os.WriteFile(outputPath, content, os.ModePerm)
 			if err != nil {
 				return err
 			}
@@ -208,14 +232,14 @@ func copyStaticFiles(outputDir string, templateDir string) error {
 
 		if !info.IsDir() {
 			// Read the JS file
-			content, err := ioutil.ReadFile(path)
+			content, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
 
 			// Create the corresponding file in the output directory
 			outputPath := filepath.Join(outputDir, "js", filepath.Base(path))
-			err = ioutil.WriteFile(outputPath, content, os.ModePerm)
+			err = os.WriteFile(outputPath, content, os.ModePerm)
 			if err != nil {
 				return err
 			}
@@ -229,13 +253,13 @@ func copyStaticFiles(outputDir string, templateDir string) error {
 	}
 
 	// Copy the pretty-feed-v3.xsl file to the output directory
-	xslContent, err := ioutil.ReadFile(xslFile)
+	xslContent, err := os.ReadFile(xslFile)
 	if err != nil {
 		return err
 	}
 
 	xslOutputPath := filepath.Join(outputDir, "pretty-feed-v3.xsl")
-	err = ioutil.WriteFile(xslOutputPath, xslContent, os.ModePerm)
+	err = os.WriteFile(xslOutputPath, xslContent, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -294,7 +318,7 @@ func generateRSS(pages []Page, settings Settings) error {
 	xmlBuf.Write(xmlContent)
 
 	rssFilePath := filepath.Join(settings.OutputDir, "rss.xml")
-	err = ioutil.WriteFile(rssFilePath, xmlBuf.Bytes(), os.ModePerm)
+	err = os.WriteFile(rssFilePath, xmlBuf.Bytes(), os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -381,9 +405,10 @@ func main() {
 	checkDirectories(settings)
 
 	// Generate individual pages
+	// Generate individual pages
 	for _, page := range pages {
 		// Create the output file
-		pageFile, err := os.Create(filepath.Join(outputDir, fmt.Sprintf("%s.html", page.Title)))
+		pageFile, err := os.Create(filepath.Join(outputDir, page.Title)) // Remove ".html" from here
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -413,11 +438,10 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("Generated page: %s.html\n", page.Title)
+		log.Printf("Generated page: %s\n", page.Title) // Remove ".html" from here
 	}
-
 	// Read the README.md file
-	readmeContent, err := ioutil.ReadFile(filepath.Join(dirPath, "README.md"))
+	readmeContent, err := os.ReadFile(filepath.Join(dirPath, "README.md"))
 	if err != nil {
 		log.Fatal(err)
 	}

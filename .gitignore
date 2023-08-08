@@ -6,3 +6,7 @@ markdown/
 
 # ignore personalized settings directory
 settings.json
+
+# ignore resulting binaries
+docr
+result/

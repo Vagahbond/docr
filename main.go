@@ -170,7 +170,7 @@ func generateButtons(pages []Page) string {
 	var buttons strings.Builder
 	for _, page := range pages {
 		if page.Title != "index" {
-			button := fmt.Sprintf("<a href=\"%s.html\" class=\"button\">%s</a>", page.Title, page.Title)
+			button := fmt.Sprintf(`<a href="%s" class="button">%s</a>`, page.Title, page.ModificationDate.Format("2006-01-02"))
 			buttons.WriteString(button)
 		}
 	}

@@ -276,9 +276,26 @@ func generateRSS(pages []Page, settings Settings) error {
 
 	var rssItems []RSSItem
 	for _, page := range pages {
+		// Extract the title from the filename without the extension
+		titleParts := strings.SplitN(page.Title, ".", 2)
+		itemTitle := titleParts[0]
+
+		// Check if the itemTitle follows the yyyy-mm-dd-title format
+		parts := strings.SplitN(itemTitle, "-", 4)
+		if len(parts) >= 3 && len(parts[0]) == 4 && len(parts[1]) == 2 && len(parts[2]) == 2 {
+			itemTitle = strings.Join(parts[3:], "-")
+		} else if len(parts) >= 2 && len(parts[0]) == 2 && len(parts[1]) == 2 {
+			itemTitle = strings.Join(parts[2:], "-")
+		}
+
+		// If itemTitle is empty, use the date as the title
+		if itemTitle == "" {
+			itemTitle = page.ModificationDate.Format("2006-01-02")
+		}
+
 		item := RSSItem{
-			Title:       page.Title,
-			Link:        fmt.Sprintf("%s.html", page.Title),
+			Title:       itemTitle,
+			Link:        itemTitle + ".html",
 			Description: page.Content,
 			PubDate:     page.ModificationDate.Format(time.RFC1123Z),
 		}
@@ -405,8 +422,23 @@ func main() {
 	checkDirectories(settings)
 
 	// Generate individual pages
-	// Generate individual pages
 	for _, page := range pages {
+		// Extract the title from the page's title and remove .html extension
+		pageTitle := strings.TrimSuffix(page.Title, ".html")
+
+		// Check if the pageTitle follows the yyyy-mm-dd-title.md format
+		parts := strings.SplitN(pageTitle, "-", 4)
+		if len(parts) >= 3 && len(parts[0]) == 4 && len(parts[1]) == 2 && len(parts[2]) == 2 {
+			pageTitle = strings.Join(parts[3:], "-")
+		} else if len(parts) >= 2 && len(parts[0]) == 2 && len(parts[1]) == 2 {
+			pageTitle = strings.Join(parts[2:], "-")
+		}
+
+		// If pageTitle is empty, use the date as the title
+		if pageTitle == "" {
+			pageTitle = page.ModificationDate.Format("2006-01-02")
+		}
+
 		// Create the output file
 		pageFile, err := os.Create(filepath.Join(outputDir, page.Title)) // Remove ".html" from here
 		if err != nil {
@@ -424,7 +456,7 @@ func main() {
 			Footer           Footer
 			ModificationDate string
 		}{
-			Title:            page.Title,
+			Title:            pageTitle, // Use extracted title without .html
 			Content:          page.Content,
 			GithubUsername:   settings.GithubUsername,
 			WebsiteName:      settings.WebsiteName,
@@ -440,6 +472,7 @@ func main() {
 
 		log.Printf("Generated page: %s\n", page.Title) // Remove ".html" from here
 	}
+
 	// Read the README.md file
 	readmeContent, err := os.ReadFile(filepath.Join(dirPath, "README.md"))
 	if err != nil {
